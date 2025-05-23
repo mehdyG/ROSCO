@@ -16,8 +16,10 @@ Note
 # Python Modules
 #import yaml
 import os
-#import numpy as np
-#import matplotlib.pyplot as plt
+import numpy as np
+import matplotlib.pyplot as plt
+from pyFAST.input_output import FASTOutputFile
+
 # ROSCO toolbox modules 
 from rosco.toolbox import controller as ROSCO_controller
 from rosco.toolbox import turbine as ROSCO_turbine
@@ -31,7 +33,7 @@ def main():
     example_out_dir = os.path.join(this_dir,'examples_out')
 
     # Load yaml file 
-    parameter_filename = os.path.join(tune_dir, 'IEA15MW_MultiOmega.yaml') 
+    parameter_filename = os.path.join(tune_dir, 'NREL5MW.yaml') 
     inps = load_rosco_yaml(parameter_filename)
     path_params         = inps['path_params']
     turbine_params      = inps['turbine_params']
@@ -62,13 +64,52 @@ def main():
     # Run OpenFAST
     # --- May need to change fastcall if you use a non-standard, conda-installed command to call openfast
     # If you run the `fastcall` from the command line where you run this script, it should run OpenFAST
-    fastcall = 'openfast'
-    run_openfast(
-    os.path.join(tune_dir,path_params['FAST_directory']),
-    fastcall=fastcall, 
-    fastfile=path_params['FAST_InputFile'], 
-    chdir=True
-    )
+
+    #print(os.path.join(tune_dir,path_params['FAST_directory'],'/NREL-5MW.outb'))
+    #print("path_params['FAST_directory'] = ")
+    #print( path_params['FAST_directory'] )
+
+    #name = input()
+
+    if not(os.path.exists( 'Test_Cases/NREL-5MW/NREL-5MW.outb' ) ) :
+        fastcall = 'openfast'
+        run_openfast(
+        os.path.join(tune_dir,path_params['FAST_directory']),
+        fastcall=fastcall, 
+        fastfile=path_params['FAST_InputFile'], 
+        chdir=True
+        )
+
+    fastoutFilename = os.path.join('Test_Cases/NREL-5MW/NREL-5MW.outb')
+    df = FASTOutputFile(fastoutFilename).toDataFrame()
+    print(df.keys())
+    time  = df['Time_[s]']
+    Omega = df['RotSpeed_[rpm]']
+    V_wind = df['Wind1VelX_[m/s]']
+    Theta = df['BldPitch1_[deg]']
+    x_T = df['TTDspFA_[m]']
+    Gen_Power = df['GenPwr_[kW]']
+
+
+    fig, (ax1, ax2, ax3, ax4, ax5) = plt.subplots(5)
+    fig.suptitle('Control System Test')
+    ax1.plot(time, V_wind)
+    ax2.plot(time, Omega)
+    ax3.plot(time, Theta)
+    ax4.plot(time, x_T)
+    ax5.plot(time, Gen_Power)
+
+
+    #plt.plot(time, Omega)
+    #plt.xlabel('Time [s]')
+    #plt.ylabel('RotSpeed [rpm]')
+    ax1.set(xlabel='Time [s]', ylabel='V_wind [m/s]')
+    ax2.set(xlabel='Time [s]', ylabel='RotSpeed [rpm]')
+    ax3.set(xlabel='Time [s]', ylabel='Theta [deg]')
+    ax4.set(xlabel='Time [s]', ylabel='x_T [m]')
+    ax5.set(xlabel='Time [s]', ylabel='GenPwr [kW]')
+
 
 if __name__ == "__main__":
     main()
+    plt.show()
